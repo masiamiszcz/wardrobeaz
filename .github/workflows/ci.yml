@@ -1,0 +1,31 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kodu
+        uses: actions/checkout@v3
+
+      - name: Budowanie i uruchomienie kontenerów
+        run: docker-compose up -d --build
+
+      - name: Odczekaj na uruchomienie bazy
+        run: sleep 20
+
+      - name: Wykonaj migracje
+        run: docker-compose exec web python manage.py migrate --noinput
+
+      # - name: Uruchom testy (opcjonalnie)
+      #   run: docker-compose exec web python manage.py test
+
+      - name: Zatrzymaj kontenery
+        run: docker-compose down
+ 
