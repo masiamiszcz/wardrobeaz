@@ -12,10 +12,10 @@ services:
       - DB_NAME=webdb
     volumes:
       - web_data:/data
-      - C:/Users/Hacce/Documents/wardrobe/wardrobe_projects/s3d_files:/shared_data
-      - C:/Users/Hacce/Documents/wardrobe/wardrobe_models:/models
-      - C:/Users/Hacce/Documents/wardrobe/wardrobe_models/img:/img_models
-      - C:/Users/Hacce/Documents/wardrobe/wardrobe_materials:/materials
+      - s3d_files:/shared_data
+      - wardrobe_models:/models
+      - wardrobe_models/img:/img_models
+      - wardrobe_materials:/materials
   db:
     image: mysql:8.0
     restart: always
@@ -32,3 +32,6 @@ services:
 volumes:
   db_data:
   web_data:
+  s3d_files:
+  wardrobe_models:
+  wardrobe_materials:
