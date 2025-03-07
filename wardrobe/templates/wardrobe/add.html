@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dodaj elementy</title>
+</head>
+<body>
+    <h2>Dodaj nowy rodzaj szafki</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ cabinet_form.as_p }}
+        <button type="submit" name="cabinet_model_submit">Dodaj szafkę</button>
+    </form>
+
+    <h2>Dodaj nowy materiał</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ material_form.as_p }}
+        <button type="submit" name="material_submit">Dodaj materiał</button>
+    </form>
+</body>
+</html>

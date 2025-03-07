@@ -1,0 +1,34 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=youruser
+      - DB_PASSWORD=yourpassword
+      - DB_NAME=webdb
+    volumes:
+      - web_data:/data
+      - C:/Users/Hacce/Documents/wardrobe/wardrobe_projects/s3d_files:/shared_data
+      - C:/Users/Hacce/Documents/wardrobe/wardrobe_models:/models
+      - C:/Users/Hacce/Documents/wardrobe/wardrobe_models/img:/img_models
+      - C:/Users/Hacce/Documents/wardrobe/wardrobe_materials:/materials
+  db:
+    image: mysql:8.0
+    restart: always
+    ports:
+      - "3306:3306"  
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wardrobedb
+      MYSQL_USER: masia
+      MYSQL_PASSWORD: masiawardrobe
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
+  web_data:

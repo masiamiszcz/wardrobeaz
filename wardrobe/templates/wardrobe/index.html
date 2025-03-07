@@ -1,0 +1,148 @@
+  {% load static %}
+  <!DOCTYPE html>
+  <html lang="pl">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wizualizacja Szafy</title>
+    <!-- Bootstrap Dark Theme -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{% static 'wardrobe/css/style.css' %}">
+  </head>
+  <body data-bs-theme="dark">
+    <!-- Główna scena Three.js -->
+    <div id="canvas-container"></div>
+    <button id="mainResetCameraBtn" class="reset-camera-btn">Reset</button>
+    
+    <!-- Panel główny (przyciski i lista elementów) -->
+    <div class="controls-panel">
+      <button id="openModalBtn" class="btn btn-primary">Dodaj element</button>
+      <!-- Lista dodanych elementów – wyświetlana tylko, gdy jest co usuwać -->
+      <div id="elementListContainer" class="hidden">
+        <h5>Lista elementów:</h5>
+        <ul id="elementList"></ul>
+        <button id="deleteSelectedBtn" class="btn btn-danger">Usuń zaznaczone</button>
+        <button id="SaveButton" class="btn btn-warning">Zapisz wymiary</button>
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+      </div>
+      <!-- menu edycji: Wysokość ściany mebli, odsuniecie od sciany-->
+      <div id="wallHeightContainer" class="hidden">
+        <label for="wallHeight">Wysokość ściany mebli</label>
+        <input type="range" id="wallHeight" step="1" value="2100">
+        <span id="wallHeightValue">2100 mm</span>
+      </div>
+      <div id="wallOffsetContainer" class="hidden">
+        <label for="wallOffset">Odsunięcie mebli od ściany</label>
+        <input type="range" id="wallOffset" step="1" value="50" min="0" max="150">
+        <span id="wallOffsetValue">50 mm</span>
+      </div>
+      
+    </div>
+
+    <!-- Modal dodawania elementu -->
+    <div id="modal-container" class="modal hidden">
+      <div class="modal-content">
+        <button id="modalCloseBtn" class="modal-close">X</button>
+        <!-- Krok 1: Wybór typu szafki -->
+        <div id="modal-step-1">
+          <h2 style="text-align: center;">Wybierz typ szafki</h2>
+          <div class="button-group">
+            <button class="btn btn-secondary type-btn btn-wiszaca" data-type="wiszaca">Szafka wisząca</button>
+            <button class="btn btn-secondary type-btn btn-wysoka" data-type="wysoka">Szafka wysoka</button>
+            <button class="btn btn-secondary type-btn btn-dolna" data-type="dolna">Szafka dolna</button>
+          </div>
+        </div>
+        <!-- Krok 2: Formularz konfiguracji – trzy kolumny -->
+        <div id="modal-step-2" class="hidden">
+          <div class="modal-step2-container">
+            <!-- Kolumna lewa: Lista rodzajów szafek -->
+            <div class="cabinet-type-list">
+              <h3>Rodzaje szafek</h3>
+              <div class="cabinet-options">
+                {% for model in cabinet_models %}
+                <img class="cabinet-thumb" data-type="{{ model.name }}" src="{{ model.img_path }}" alt="{{ model.name }}" title="{{ model.name }}">
+                {% endfor %}
+              </div>
+            </div>
+            <!-- Kolumna środkowa: Podgląd i kontrolki -->
+            <div class="preview-container">
+              <h3>Podgląd szafki</h3>
+              <div id="modal-preview-container"></div>
+              <div class="preview-controls-wrapper">
+                <div id="modal-controls">
+                  <div class="control-group">
+                    <label for="modalWidth">Szerokość</label>
+                    <input type="range" id="modalWidth" min="250" max="2700" step="1" value="400">
+                    <span id="modalWidthValue">400 mm</span>
+                  </div>
+                  <div class="control-group">
+                    <label for="modalHeight">Wysokość</label>
+                    <input type="range" id="modalHeight" min="250" max="2700" step="1" value="600">
+                    <span id="modalHeightValue">600 mm</span>
+                  </div>
+                  <div class="control-group">
+                    <label for="modalDepth">Głębokość</label>
+                    <input type="range" id="modalDepth" min="250" max="800" step="1" value="500">
+                    <span id="modalDepthValue">500 mm</span>
+                  </div>
+                  <div class="control-group">
+                    <label for="modalLegsToggle">Nóżki</label>
+                    <input type="checkbox" id="modalLegsToggle">
+                  </div>
+                  <div class="control-group" id="modalLegsHeightContainer" style="display: none;">
+                    <label for="modalLegsHeight">Wysokość nóżek</label>
+                    <select id="modalLegsHeight">
+                      <option value="60mm">60 mm</option>
+                      <option value="85mm">85 mm</option>
+                      <option value="100mm" selected>100 mm</option>
+                      <option value="125mm">125 mm</option>
+                      <option value="150mm">150 mm</option>
+                      <option value="200mm">200 mm</option>
+                    </select>
+                  </div>
+                  <div class="control-group">
+                    <label for="modalRotationSpeed">Prędkość obrotu (podgląd)</label>
+                    <input type="range" id="modalRotationSpeed" min="0" max="0.05" step="0.001" value="0.01">
+                  </div>
+                  <button class="btn btn-secondary" id="modalToggleRotation">Włącz obrót automatyczny</button>
+                </div>
+                <div class="modal-footer">
+                  <button id="modalBackBtn" class="btn btn-warning">Powrót do wyboru szafki</button>
+                  <button class="btn btn-success" id="modalAddElementBtn">Dodaj element do projektu</button>
+                </div>
+              </div>
+            </div>
+            <!-- Kolumna prawa: Lista materiałów -->
+            <div class="material-list">
+              <h3>Materiały</h3>
+              <div class="material-options">
+                {% for mat in materials %}
+                  <img class="material-thumb" data-material="{{ mat.code }}" src="{{ mat.img_path }}" alt="{{ mat.code }}" title="{{ mat.code }}">
+                {% endfor %}
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal potwierdzający usunięcie elementów -->
+    <div id="deleteModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Potwierdzenie usunięcia</h2>
+        <p>Czy na pewno chcesz usunąć następujące elementy?</p>
+        <ul id="deleteElementList"></ul>
+        <button id="deleteCancelBtn" class="btn btn-secondary">Wróć</button>
+        <button id="deleteConfirmBtn" class="btn btn-danger">Usuń</button>
+      </div>
+    </div>
+
+    <!-- Skrypty Three.js oraz nasz skrypt -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js"></script>
+    <script  src="{% static 'wardrobe/js/wardrobe.js' %}"></script>
+    <script type="module" src="{% static 'wardrobe/js/button.js' %}"></script>
+  </body>
+  </html>

@@ -1,0 +1,308 @@
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bs-dark);
+  color: var(--bs-light);
+}
+
+#canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+/* Panel w prawym górnym rogu */
+.controls-panel {
+position: fixed;
+top: 20px;
+right: 20px;
+width: 300px;
+max-height: 90vh;       
+z-index: 1000;
+background: rgba(33, 37, 41, 0.8);
+padding: 10px;
+border-radius: 8px;
+}
+
+#elementListContainer {
+  margin-top: 15px;
+}
+
+/* Ukryj kontener, gdy nie zawiera elementów */
+.hidden {
+display: none !important;
+}
+
+#elementList {
+  list-style: none;
+  padding: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #555;
+  margin-bottom: 10px;
+  overflow-y: auto;   
+}
+
+#elementList li {
+  padding: 5px;
+  border-bottom: 1px solid #444;
+  display: flex;
+  align-items: center;
+}
+
+#elementList li.selected {
+  background-color: #007bff;
+}
+
+#elementList li input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+/* Karty/modal */
+.card {
+  background-color: rgba(33, 37, 41, 0.8) !important;
+  backdrop-filter: blur(10px);
+}
+
+.form-range::-webkit-slider-thumb {
+  background: var(--bs-secondary);
+}
+
+.form-range::-moz-range-thumb {
+  background: var(--bs-secondary);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.dot {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+input[type="radio"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #555;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+}
+
+input[type="radio"]:checked {
+  border: 5px solid #007bff;
+}
+
+.form-check-input:checked {
+  background-color: #0d6efd; 
+  border-color: #0d6efd;
+  box-shadow: 0 0 10px #0d6efd;
+}
+
+/* Modal styles */
+.modal {
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: rgba(0, 0, 0, 0.8);
+z-index: 2000;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+/* Modal content pełnoekranowy z marginesami */
+.modal-content {
+background: var(--bs-dark);
+padding: 20px;
+border-radius: 10px;
+width: calc(100% - 40px);
+height: calc(100% - 40px);
+position: relative;
+display: flex;
+flex-direction: column;
+}
+
+/* Przycisk zamknięcia – tylko mały X */
+.modal-close {
+position: absolute;
+top: 10px;
+right: 10px;
+background: transparent;
+border: none;
+font-size: 20px;
+color: var(--bs-light);
+cursor: pointer;
+}
+
+/* Krok 1 – wycentrowanie przycisków */
+#modal-step-1 .button-group {
+display: flex;
+justify-content: center;
+gap: 10px;
+margin-top: 20px;
+}
+
+#modal-step-2 {
+display: flex;
+flex-direction: column;
+height: 100%;
+overflow: hidden;
+}
+
+/* Układ kroku 2 modala: trzy kolumny */
+.modal-step2-container {
+display: flex;
+flex: 1;
+gap: 20px;
+width: 100%;
+overflow: hidden;
+}
+
+/* Kolumna lewa: lista rodzajów szafek – 25% */
+.cabinet-type-list {
+width: 25%;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+.cabinet-type-list h3 {
+margin-bottom: 10px;
+}
+
+.cabinet-options {
+display: flex;
+flex-direction: column;
+gap: 10px;
+width: 80%;
+}
+
+/* Miniaturki szafek */
+.cabinet-thumb {
+max-width: 200px;
+max-height: 200px;
+width: 100%;
+height: auto;
+cursor: pointer;
+border: 2px solid transparent;
+border-radius: 4px;
+transition: border-color 0.2s, background-color 0.2s;
+}
+
+.cabinet-thumb.selected {
+border: 2px solid #007bff;
+background-color: rgba(0, 123, 255, 0.3);
+}
+
+/* Kolumna środkowa: podgląd i kontrolki – 60% */
+.preview-container {
+width: 60%;
+display: flex;
+flex-direction: column;
+/* Już było: flex: 1; background, padding, border-radius, overflow... */
+flex: 1;
+background: #000;
+padding: 10px;
+border-radius: 8px;
+overflow: hidden;
+
+/* --- NOWE / ZMIENIONE --- */
+max-height: 100%; /* Pozwala się wypełnić w pionie, bez przekraczania rodzica */
+}
+
+/* Kontener podglądu 3D – wypełnia wolną przestrzeń */
+#modal-preview-container {
+flex: 1 1 auto; 
+min-height: 0; 
+background: #000;
+overflow: hidden; 
+}
+
+/* Kontrolki – ograniczenie do 40% wysokości kontenera .preview-container */
+.preview-controls-wrapper {
+margin-top: auto;
+
+/* --- NOWE / ZMIENIONE --- */
+flex: 0 1 40%;     /* Może się rozciągnąć do max 40% wysokości rodzica */
+max-height: 40%;   /* Twarde ograniczenie */
+overflow-y: auto;  /* W razie dużej ilości opcji pojawi się scrollbar */
+}
+
+/* Kolumna prawa: lista materiałów – 15% */
+.material-list {
+width: 15%;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+.material-list h3 {
+margin-bottom: 10px;
+}
+
+.material-options {
+display: flex;
+flex-direction: column;
+gap: 10px;
+width: 80%;
+}
+
+/* Miniaturki materiałów */
+.material-thumb {
+max-width: 50px;
+max-height: 50px;
+width: 100%;
+height: auto;
+cursor: pointer;
+border: 2px solid transparent;
+border-radius: 4px;
+transition: border-color 0.2s, background-color 0.2s;
+}
+
+.material-thumb.selected {
+border: 2px solid #007bff;
+background-color: rgba(0, 123, 255, 0.3);
+}
+
+/* Stopka modala – przyciski poniżej formularza */
+.modal-footer {
+display: flex;
+justify-content: space-between;
+margin-top: 10px;
+}
+
+.reset-camera-btn {
+position: absolute;
+bottom: 10px;
+right: 10px;
+padding: 8px 12px;
+font-size: 14px;
+background-color: rgba(0, 0, 0, 0.5);
+color: #fff;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+z-index: 10;
+}
