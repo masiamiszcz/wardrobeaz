@@ -27,5 +27,5 @@ jobs:
       #   run: docker-compose exec web python manage.py test
 
       - name: Zatrzymaj kontenery
-        run: docker-compose down
+        run: docker compose down
  
