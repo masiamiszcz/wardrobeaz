@@ -14,7 +14,7 @@ services:
       - web_data:/data
       - s3d_files:/shared_data
       - wardrobe_models:/models
-      - wardrobe_models/img:/img_models
+      - img:/img_models
       - wardrobe_materials:/materials
   db:
     image: mysql:8.0
@@ -35,3 +35,4 @@ volumes:
   s3d_files:
   wardrobe_models:
   wardrobe_materials:
+  img:
