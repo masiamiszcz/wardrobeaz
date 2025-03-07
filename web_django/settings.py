@@ -59,7 +59,7 @@ DATABASES = {
         'NAME': 'wardrobedb',  
         'USER': 'masia',  
         'PASSWORD': 'masiawardrobe',  
-        'HOST': 'wardrobedb',  # Nazwa kontenera
+        'HOST': 'db', 
         'PORT': '3306',
     }
 }

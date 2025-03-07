@@ -7,9 +7,9 @@ services:
       - db
     environment:
       - DB_HOST=db
-      - DB_USER=youruser
-      - DB_PASSWORD=yourpassword
-      - DB_NAME=webdb
+      - DB_USER=masia
+      - DB_PASSWORD=masiawardrobe
+      - DB_NAME=wardrobedb
     volumes:
       - web_data:/data
       - s3d_files:/shared_data
