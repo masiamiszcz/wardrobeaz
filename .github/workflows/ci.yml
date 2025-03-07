@@ -23,8 +23,6 @@ jobs:
       - name: Wykonaj migracje
         run: docker compose exec web python manage.py migrate --noinput
 
-      # - name: Uruchom testy (opcjonalnie)
-      #   run: docker-compose exec web python manage.py test
 
       - name: Zatrzymaj kontenery
         run: docker compose down
