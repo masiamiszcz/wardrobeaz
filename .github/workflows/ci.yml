@@ -48,5 +48,3 @@ jobs:
       - name: Push obrazu "web" do GHCR
         run: docker push ghcr.io/${{ github.repository_owner }}/web:latest
 
-      - name: Push obrazu "db" do GHCR
-        run: docker push ghcr.io/${{ github.repository_owner }}/db:latest
