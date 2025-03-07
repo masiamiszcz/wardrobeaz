@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout kodu
         uses: actions/checkout@v3
@@ -23,7 +22,28 @@ jobs:
       - name: Wykonaj migracje
         run: docker compose exec web python manage.py migrate --noinput
 
-
       - name: Zatrzymaj kontenery
         run: docker compose down
- 
+
+  push-ghcr:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kodu
+        uses: actions/checkout@v3
+      
+      - name: Logowanie do GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Budowanie obrazów z Docker Compose
+        run: docker compose build
+
+      - name: Push obrazu "web" do GHCR
+        run: docker push ghcr.io/${{ github.repository_owner }}/web:latest
+
+      - name: Push obrazu "db" do GHCR
+        run: docker push ghcr.io/${{ github.repository_owner }}/db:latest
