@@ -19,8 +19,11 @@ jobs:
       - name: Odczekaj na uruchomienie bazy
         run: sleep 20
 
-      - name: Wykonaj migracje
-        run: docker compose exec web python manage.py migrate --noinput
+      - name: Zainicjuj migrację
+        run: docker compose exec web python manage.py makemigrations wardrobe
+        
+      - name: Wykonaj migrację
+        run: docker compose exec web python manage.py migrate wardrobe --noinput
 
       - name: Zatrzymaj kontenery
         run: docker compose down
