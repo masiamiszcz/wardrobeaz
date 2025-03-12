@@ -27,9 +27,8 @@ COPY entrypoint.sh /entrypoint.sh
 # Nadaj uprawnienia wykonania dla entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Skopiuj certyfikat SSL do kontenera
-COPY BaltimoreCyberTrustRoot.crt.pem /app/BaltimoreCyberTrustRoot.crt.pem
-RUN update-ca-certificates
+
+
 # Otwórz port 8000 (domyślny port Django/gunicorna)
 EXPOSE 8000
 
