@@ -1,7 +1,7 @@
 # Używamy oficjalnego obrazu Pythona jako bazy
 FROM python:3.13
 
-# Ustaw zmienne środowiskowe: 
+# Ustaw zmienne środowiskowe:
 # - PYTHONDONTWRITEBYTECODE zapobiega tworzeniu plików .pyc
 # - PYTHONUNBUFFERED powoduje, że output jest natychmiast przekazywany
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -21,9 +21,17 @@ RUN pip install -r requirements.txt
 # Skopiuj całą aplikację do kontenera
 COPY . /app/
 
-# Otwórz port 8000 (domyślny port Django)
+# Skopiuj skrypt entrypoint.sh do katalogu głównego obrazu
+COPY entrypoint.sh /entrypoint.sh
+
+# Nadaj uprawnienia wykonania dla entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Skopiuj certyfikat SSL do kontenera
+COPY BaltimoreCyberTrustRoot.crt.pem /app/BaltimoreCyberTrustRoot.crt.pem
+RUN update-ca-certificates
+# Otwórz port 8000 (domyślny port Django/gunicorna)
 EXPOSE 8000
 
-# Domyślna komenda startowa – dla produkcji warto użyć np. gunicorn,
-# ale na początek możemy użyć wbudowanego serwera Django
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Ustaw entrypoint na nasz skrypt
+ENTRYPOINT ["/entrypoint.sh"]

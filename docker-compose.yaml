@@ -4,8 +4,6 @@ services:
     image: ghcr.io/masiamiszcz/web:latest
     ports:
       - "8000:8000"
-    depends_on:
-      - db
     environment:
       - DB_HOST=db
       - DB_USER=masia
@@ -13,27 +11,10 @@ services:
       - DB_NAME=wardrobedb
     volumes:
       - web_data:/data
-      - s3d_files:/shared_data
-      - wardrobe_models:/models
-      - img:/img_models
-      - wardrobe_materials:/materials
-  db:
-    image: mysql:8.0
-    restart: always
-    ports:
-      - "3306:3306"  
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: wardrobedb
-      MYSQL_USER: masia
-      MYSQL_PASSWORD: masiawardrobe
-    volumes:
-      - db_data:/var/lib/mysql
+      - C:\Users\Hacce\Documents\wardrobe\wardrobe_projects\s3d_files:/shared_data
+      - C:\Users\Hacce\Documents\wardrobe\wardrobe_models:/models
+      - C:\Users\Hacce\Documents\wardrobe\wardrobe_models\img:/img_models
+      - C:\Users\Hacce\Documents\wardrobe\wardrobe_materials:/materials
 
 volumes:
-  db_data:
-  web_data:
-  s3d_files:
-  wardrobe_models:
-  wardrobe_materials:
-  img:
+  web_data: 

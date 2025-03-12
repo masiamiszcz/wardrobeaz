@@ -13,5 +13,6 @@ __pycache__/
 # Django stuff:
 *.log
 local_settings.py
+settings.py
 db.sqlite3
 
