@@ -157,10 +157,10 @@ function adjustModalOptions() {
 // ============================
 
 function addNewCabinetPluses() {
-  let eldolna = getLastCabinetforCabinet("dolna", 250, 250);
-  let elwiszaca = getLastCabinetforCabinet("wiszaca", 250, 250);
-  let EleDolna = eldolna ? eldolna.clone() : null;
-  let EleWiszaca = elwiszaca ? elwiszaca.clone() : null;
+  const eldolna = getLastCabinetforCabinet("dolna", 250, 250);
+  const elwiszaca = getLastCabinetforCabinet("wiszaca", 250, 250);
+  const EleDolna = eldolna ? eldolna.clone() : null;
+  const EleWiszaca = elwiszaca ? elwiszaca.clone() : null;
   let EleDolna_x_start;
   let EleDolna_x_end;
   let EleWiszaca_x_end;
@@ -424,39 +424,7 @@ function createWardrobe(dimensions, includeBackPanel = true, wardrobeType = null
   const backPanel = new THREE.Mesh(backGeometry, backMaterial);
   backPanel.position.set(0, panelHeight / 2, -dimensions.depth / 2 + PANEL_THICKNESS / 2);
   panelsGroup.add(backPanel);
-  
-  // Łączenie paneli i (opcjonalnie) nóżek
-  let wardrobeParent = new THREE.Group();
-  if (legsEnabled) {
-    panelsGroup.position.y = selectedLegHeight;
-    wardrobeParent.add(panelsGroup);
-    const legsGroup = new THREE.Group();
-    const legFileName = 'media/' + (selectedLegHeight * 1000) + "mm.dae";
-    const loader = new THREE.ColladaLoader();
-    
-    const addLegAtPosition = function(position) {
-      loader.load(legFileName, function(collada) {
-        const legModel = collada.scene;
-        legModel.position.copy(position);
-        legsGroup.add(legModel);
-      });
-    };
-    const halfWidth = dimensions.width / 2;
-    const halfDepth = dimensions.depth / 2;
-    const offsetSide = 0.05;
-    const offsetBack = 0.05;
-    const offsetFront = 0.07;
-    addLegAtPosition(new THREE.Vector3(-halfWidth + offsetSide, 0, halfDepth - offsetFront));
-    addLegAtPosition(new THREE.Vector3(halfWidth - offsetSide, 0, halfDepth - offsetFront));
-    addLegAtPosition(new THREE.Vector3(-halfWidth + offsetSide, 0, -halfDepth + offsetBack));
-    addLegAtPosition(new THREE.Vector3(halfWidth - offsetSide, 0, -halfDepth + offsetBack));
-    
-    wardrobeParent.add(panelsGroup);
-    wardrobeParent.add(legsGroup);
-  } else {
-    wardrobeParent = panelsGroup;
-  }
-  return wardrobeParent;
+  return panelsGroup;
 }
 
 
@@ -469,6 +437,70 @@ function addEdges(mesh) {
   const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
   mesh.add(line);
 }
+
+
+//===========================================
+// Funkcja dodająca nóżki do obiektu three.js
+//===========================================
+
+let legsGroup = null; // Przechowujemy grupę nóg globalnie, by nie dodawać ich wielokrotnie
+let legModelTemplate = null; // Przechowujemy wczytany model nóg, by nie ładować go wielokrotnie
+
+function addLegs(panelsGroup, dimensions) {
+  let wardrobeParent = new THREE.Group();
+
+  if (legsEnabled) {
+    panelsGroup.position.y = selectedLegHeight;
+    wardrobeParent.add(panelsGroup);
+
+    // Jeśli nogi już istnieją, zmieniamy tylko ich pozycję
+    if (legsGroup) {
+      legsGroup.children.forEach((leg, index) => {
+        const positions = calculateLegPositions(dimensions);
+        leg.position.copy(positions[index]);
+      });
+    } else {
+      legsGroup = new THREE.Group();
+
+      const legFileName = 'media/' + (selectedLegHeight * 1000) + "mm.dae";
+      const loader = new THREE.ColladaLoader();
+
+      loader.load(legFileName, function(collada) {
+        legModelTemplate = collada.scene;
+
+        const positions = calculateLegPositions(dimensions);
+        positions.forEach(pos => {
+          const legClone = legModelTemplate.clone();
+          legClone.position.copy(pos);
+          legsGroup.add(legClone);
+        });
+
+        wardrobeParent.add(legsGroup);
+      });
+    }
+    wardrobeParent.add(legsGroup);
+  } else {
+    wardrobeParent = panelsGroup;
+  }
+  
+  return wardrobeParent;
+}
+
+function calculateLegPositions(dimensions) {
+  const halfWidth = dimensions.width / 2;
+  const halfDepth = dimensions.depth / 2;
+  const offsetSide = 0.05;
+  const offsetBack = 0.05;
+  const offsetFront = 0.07;
+
+  return [
+    new THREE.Vector3(-halfWidth + offsetSide, 0, halfDepth - offsetFront),
+    new THREE.Vector3(halfWidth - offsetSide, 0, halfDepth - offsetFront),
+    new THREE.Vector3(-halfWidth + offsetSide, 0, -halfDepth + offsetBack),
+    new THREE.Vector3(halfWidth - offsetSide, 0, -halfDepth + offsetBack)
+  ];
+}
+
 
 
 // =======================
@@ -728,7 +760,8 @@ function updateModalPreview() {
     modalPreviewScene.remove(modalPreviewWardrobe);
   }
   modalPreviewWardrobe = createWardrobe(wardrobeDimensions, currentIncludeBackPanel, currentWardrobeType);
-  modalPreviewScene.add(modalPreviewWardrobe);
+  let wardrobeFinal = addLegs(modalPreviewWardrobe, wardrobeDimensions);
+  modalPreviewScene.add(wardrobeFinal);
 }
 
 document.getElementById("modalWidth").addEventListener("input", function() {
@@ -1214,6 +1247,7 @@ document.getElementById("modalAddElementBtn").addEventListener("click", function
   modalType = null;
   modalCabinetType = null;
   modalMaterial = null;
+  legsGroup=null;
   addNewCabinetPluses();
 });
 

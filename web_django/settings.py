@@ -55,8 +55,7 @@ WSGI_APPLICATION = "web_django.wsgi.application"
 
 DATABASES = {
     'default': {
-
-        'PORT': '3306',
+        
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
         }
