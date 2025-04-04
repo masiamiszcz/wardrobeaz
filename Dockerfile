@@ -30,7 +30,7 @@ RUN chmod +x /entrypoint.sh
 
 
 # Otwórz port 8000 (domyślny port Django/gunicorna)
-EXPOSE 8000
+EXPOSE 8080
 
 # Ustaw entrypoint na nasz skrypt
 ENTRYPOINT ["/entrypoint.sh"]

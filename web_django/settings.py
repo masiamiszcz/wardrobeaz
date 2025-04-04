@@ -55,7 +55,12 @@ WSGI_APPLICATION = "web_django.wsgi.application"
 
 DATABASES = {
     'default': {
-        
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME':'mywardrobedb',
+        'USER':'masiamiszcz',
+        'PASSWORD':'iza123PL_!',
+        'HOST':'mywardrobedb.mysql.database.azure.com',
+        'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
         }

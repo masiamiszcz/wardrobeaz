@@ -8,8 +8,7 @@ from .forms import CabinetModelForm, MaterialForm
 from copy import deepcopy
 from lxml import etree
 
-#def home(request):
-#    return render(request, 'wardrobe/index.html')
+
 def add_elements_view(request):
     if request.method == 'POST':
         # Rozróżniamy, który formularz został wysłany

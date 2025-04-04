@@ -14,4 +14,4 @@ python manage.py migrate wardrobe --noinput
 
 # Uruchom serwer aplikacji (przykładowo przy użyciu gunicorn)
 echo "Uruchamiam serwer aplikacji..."
-exec python manage.py runserver 0.0.0.0:8000
+exec python manage.py runserver 0.0.0.0:8080

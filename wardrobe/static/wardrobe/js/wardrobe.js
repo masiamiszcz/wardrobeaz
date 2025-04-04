@@ -5,7 +5,21 @@ console.log('Initializing main Three.js scene...');
 // =======================
 const scene = new THREE.Scene();  
 scene.background = new THREE.Color(0x1a1a1a);
+const floorGeometry = new THREE.PlaneGeometry(10, 10);
+const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, side: THREE.DoubleSide });
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+const wallGeometry = new THREE.PlaneGeometry(10, 3);
+const textureLoader = new THREE.TextureLoader();
+const wallTexture = textureLoader.load('/media/wall.jpg');
+wallTexture.wrapS = THREE.RepeatWrapping;
+wallTexture.wrapT = THREE.RepeatWrapping;
+wallTexture.repeat.set(9, 3);
+const wallMaterial = new THREE.MeshPhongMaterial({ map: wallTexture, side: THREE.DoubleSide });
+const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
+const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
+AddWallsFloor();
 const camera = new THREE.PerspectiveCamera(
+
   75, 
   window.innerWidth / window.innerHeight, 
   0.1, 
@@ -15,22 +29,65 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// Tablica przechowująca wszystkie klikalne kule
+
+
+// ====================
+// Definicja materiałow
+// ====================
+
+const materials = {
+  wood: {
+    "0481_BS": new THREE.MeshPhongMaterial({
+      map: textureLoader.load('/materials/0481_BS.jpg'),
+      shininess: 30,
+      specular: 0x222222
+    }),
+    "K003_PW": new THREE.MeshPhongMaterial({
+      map: textureLoader.load('/materials/K003_PW.jpg'),
+      shininess: 30,
+      specular: 0x222222
+    })
+  }
+};
+
+
+// =============================
+// Definicje zmiennych i stałych 
+// =============================
+
+let currentWardrobeMaterial = materials.wood.K003_PW;
+let currentWardrobeType = null; // np. "korpus_uni", "korpus_uni_blat", etc.
+let currentIncludeBackPanel = true;
+let wardrobeDimensions = { width: 0.6, height: 0.9, depth: 0.510 };
+
+let legsEnabled = false;
+let updatewall = false;
+let selectedLegHeight = 0.1; // 100 mm
+
+const PANEL_THICKNESS = 0.018;
+let firstElementDepth = null;
+
+let wallHeight = 2100;      // domyślnie 2100 mm
+let wallOffset = 50;         // domyślnie 50 mm
+let defaultGap = 450;       // domyślnie 450 mm (przerwa między szafkami)
+const MIN_GAP = 350;
+const MAX_WALL_HEIGHT = 2500;
+
+const addedElements = {}; 
 const clickableSpheres = [];
-// Zmienna dla aktualnie animowanej kuli
 let currentAnimatingSphere = null;
+
 
 // =======================
 // TWORZENIE KULI Z PLUSIKIEM, FUNKCJA
 // =======================
-function addPlusSphere(position = new THREE.Vector3(0, 0, 0), posType = undefined, lastElement_x_end = null) {
-
+function addPlusSphere(position = new THREE.Vector3(0.3, 0.3, 0.3), posType = undefined, lastElement_x_end = null) {
   const sphereRadius = 0.25/2;
   const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 16, 16);
   const sphereMaterial = new THREE.MeshBasicMaterial({
     color: 0xaaaaaa,
     transparent: true,
-    opacity: 0.2,
+    opacity: 0.4,
     side: THREE.DoubleSide
   });
   const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
@@ -76,7 +133,7 @@ function addPlusSphere(position = new THREE.Vector3(0, 0, 0), posType = undefine
   return sphere;
 }
 
-addPlusSphere(new THREE.Vector3(0, 0, 0));
+addPlusSphere(); 
 
 // ====================================
 // INTERAKCJE – RAYCASTER, EVENTY MYSZY
@@ -87,8 +144,8 @@ const mouse = new THREE.Vector2();
 let isAnimating = false;
 let animationPhase = ''; // 'growing' lub 'shrinking'
 let animationStartTime = 0;
-const growDuration = 100;   // czas trwania powiększenia (w ms)
-const shrinkDuration = 300; // czas trwania zmniejszania (w ms)
+const growDuration = 200;   // czas trwania powiększenia (w ms)
+const shrinkDuration = 120; // czas trwania zmniejszania (w ms)
 
 
 let specificSphere;
@@ -132,13 +189,14 @@ function adjustModalOptions() {
   const btnWis = document.querySelector(".btn-wiszaca");
   const btnDol = document.querySelector(".btn-dolna");
   const btnWys = document.querySelector(".btn-wysoka");
+  const btnprzerwa = document.querySelector(".btn-przerwa");
 
-  if (specificSphere.pos === "down" || specificSphere.pos === "high") {
+  if (specificSphere.pos === "down" ) {
     // Dla kuli "down" pokazujemy przyciski dla szafki dolnej i wysokiej, ukrywamy szafkę wiszącą
     btnWis.classList.toggle("hidden", true);
     btnDol.classList.toggle("hidden", false);
     btnWys.classList.toggle("hidden", false);
-  } else if (specificSphere.pos === "up") {
+  } else if (specificSphere.pos === "up"|| specificSphere.pos === "high") {
     // Dla kuli "up" pokazujemy tylko przycisk dla szafki wiszącej, ukrywamy pozostałe
     btnWis.classList.toggle("hidden", false);
     btnDol.classList.toggle("hidden", true);
@@ -155,8 +213,23 @@ function adjustModalOptions() {
 // ============================
 // FUNCKJA TWORZACA NOWE PLUSY
 // ============================
-
+let counter = 0;
 function addNewCabinetPluses() {
+  for (let i = clickableSpheres.length - 1; i >= 0; i--) {
+    let obj = clickableSpheres[i];
+    console.log('obj', obj);
+    let cabinetsinplusposX = GetALLCabinetsInElWidth(obj.sphere.position.x * 1000 - 125, obj.sphere.position.x * 1000 + 125);
+    console.log("Cabinets in plusX");
+    console.log(cabinetsinplusposX);
+    let cabinetsinplusposXY = getCabinetsInElHeight(obj.sphere.position.y * 1000 - 125, obj.sphere.position.y * 1000 + 125, cabinetsinplusposX);
+    console.log("Cabinets in plusXY");
+    console.log(cabinetsinplusposXY);
+    if (cabinetsinplusposXY.length > 0) {
+      clickableSpheres.splice(i, 1);
+      scene.remove(obj.sphere);
+    }
+  }
+  
   const eldolna = getLastCabinetforCabinet("dolna", 250, 250);
   const elwiszaca = getLastCabinetforCabinet("wiszaca", 250, 250);
   const EleDolna = eldolna ? eldolna.clone() : null;
@@ -173,10 +246,11 @@ function addNewCabinetPluses() {
   }
 
 
-  let dolnaVector = new THREE.Vector3(0, 0, 0);
+  let dolnaVector = new THREE.Vector3(0.3, 0.3, 0.3);
   let wiszacaVector = new THREE.Vector3(0, 0, 0);
   let wysokaVector = new THREE.Vector3(0, 0, 0);
-  if(eldolna && eldolna.userData.elementType === "wysoka") {
+  if(EleDolna && (EleDolna.userData.elementType === "wysoka" || EleDolna.userData.elementType === "przerwa") && ((EleWiszaca.position.x+EleWiszaca.userData.dimensions.width/2)<
+     (EleDolna.position.x+EleDolna.userData.dimensions.width/2))) {
     dolnaVector = new THREE.Vector3(eldolna.position.x + eldolna.userData.dimensions.width/2 + 0.3, 0.5, 0);
     wiszacaVector = new THREE.Vector3(eldolna.position.x + eldolna.userData.dimensions.width/2 + 0.3, (wallHeight-360)/1000, 0);
     wysokaVector = new THREE.Vector3(eldolna.position.x - eldolna.userData.dimensions.width/2 + 0.3, eldolna.position.y + eldolna.userData.dimensions.height + 0.15, 0);
@@ -193,6 +267,7 @@ function addNewCabinetPluses() {
     if(elwiszaca === null) {
       wiszacaVector = new THREE.Vector3(0.3, (wallHeight-360)/1000, 0);
     }else{
+      console.log("elwiszaca");
       let posWiszaca = elwiszaca.clone();
       posWiszaca.position.x = posWiszaca.position.x + (posWiszaca.userData.dimensions.width / 2) + 0.3;
       posWiszaca.position.y = posWiszaca.position.y + posWiszaca.userData.dimensions.height/2;
@@ -202,28 +277,44 @@ function addNewCabinetPluses() {
   }
 
   let lastIsWysokaAndSpace = false;
+  let lastIsWysoka_przerwa = false;
   let cabinetList = getLatestCabinets();
-  if(cabinetList.lower && cabinetList.hanging){
-  if((cabinetList.lower.position.x > cabinetList.hanging.position.x )&& cabinetList.lower.userData.elementType === "wysoka"){
+  if (modalType!="wiszaca"){
+  let cabinetsOverHigh = GetALLCabinetsInElWidth((cabinetList.lower.position.x-cabinetList.lower.userData.dimensions.width/2)*1000,
+    (cabinetList.lower.position.x-cabinetList.lower.userData.dimensions.width/2+cabinetList.lower.userData.dimensions.width)*1000);
+
+  if(cabinetList.lower.userData.elementType === "wysoka"  || cabinetList.lower.userData.elementType === "przerwa") {
+      lastIsWysoka_przerwa = true;
+  }
+    
+  if(lastIsWysoka_przerwa && cabinetsOverHigh.length ===  1 && wallHeight-cabinetList.lower.userData.dimensions.height*1000 > 250) { 
     lastIsWysokaAndSpace = true;
   }else{
     lastIsWysokaAndSpace = false;
-  }}
-
+  }}else{
+    lastIsWysoka_przerwa = false;
+    lastIsWysokaAndSpace = false;
+  }
+  console.log('dodawanie plusa');
+  console.log("wiszaca wektor ");
+  console.log(wiszacaVector);
   if(lastIsWysokaAndSpace) {
     addUniquePlusSphere(dolnaVector, "down", EleDolna_x_end);
     addUniquePlusSphere(wiszacaVector, "up", EleDolna_x_end);
     addUniquePlusSphere(wysokaVector, "high", EleDolna_x_start);
 
+  }else if(lastIsWysoka_przerwa){
+    addUniquePlusSphere(dolnaVector, "down", EleDolna_x_end);
+    addUniquePlusSphere(wiszacaVector, "up", EleDolna_x_end);
   }else{
-  addUniquePlusSphere(dolnaVector, "down", EleDolna_x_end);
-  addUniquePlusSphere(wiszacaVector, "up", EleWiszaca_x_end);
+    addUniquePlusSphere(dolnaVector, "down", EleDolna_x_end);
+    addUniquePlusSphere(wiszacaVector, "up", EleWiszaca_x_end);
   }
-  // (Opcjonalnie) Zamykamy modal, jeżeli chcesz, by po dodaniu elementu formularz zniknął:
   const modalContainer = document.getElementById("modal-container");
   if (modalContainer) {
     modalContainer.classList.add("hidden");
   }
+  console.log(clickableSpheres);
 }
 
 
@@ -231,7 +322,7 @@ function addNewCabinetPluses() {
 // Funkcja sprawdzająca dostepność pozycji dla kuli 
 // ===============================================
 
-function addUniquePlusSphere(position, posType, lastElement_x_end, threshold = 0.025) {
+function addUniquePlusSphere(position, posType, lastElement_x_end, threshold = 0.25) {
   // Sprawdź, czy już istnieje kula w pobliżu zadanej pozycji
 
   for (let i = 0; i < clickableSpheres.length; i++) {
@@ -241,8 +332,6 @@ function addUniquePlusSphere(position, posType, lastElement_x_end, threshold = 0
       return obj.sphere;
     }
   }
-  console.log(clickableSpheres);
-  // Jeśli nie znaleziono, dodaj nową kulę
   return addPlusSphere(position, posType, lastElement_x_end);
 }
 
@@ -255,12 +344,6 @@ scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
-const frontLight = new THREE.PointLight(0xffffff, 0.5);
-frontLight.position.set(0, 2, 4);
-scene.add(frontLight);
-const leftLight = new THREE.PointLight(0xffffff, 0.3);
-leftLight.position.set(-4, 2, 0);
-scene.add(leftLight);
 
 // =======================
 // KONTROLKI ORBIT CONTROLS
@@ -272,7 +355,8 @@ controls.dampingFactor = 0.05;
 // =======================
 // ANIMACJA GŁÓWNEJ SCENY
 // =======================
-camera.position.set(0, 2, 5);
+camera.position.set(1, 1.5, 3);
+camera.lookAt(new THREE.Vector3(0, 0, 0));
 function animateMain() {
   requestAnimationFrame(animateMain);
   controls.update();
@@ -309,48 +393,6 @@ function animateMain() {
 }
 animateMain();
 
-// ====================
-// Definicja materiałow
-// ====================
-const textureLoader = new THREE.TextureLoader();
-const materials = {
-  wood: {
-    "0481_BS": new THREE.MeshPhongMaterial({
-      map: textureLoader.load('/materials/0481_BS.jpg'),
-      shininess: 30,
-      specular: 0x222222
-    }),
-    "K003_PW": new THREE.MeshPhongMaterial({
-      map: textureLoader.load('/materials/K003_PW.jpg'),
-      shininess: 30,
-      specular: 0x222222
-    })
-  }
-};
-
-
-// =============================
-// Definicje zmiennych i stałych 
-// =============================
-
-let currentWardrobeMaterial = materials.wood.K003_PW;
-let currentWardrobeType = null; // np. "korpus_uni", "korpus_uni_blat", etc.
-let currentIncludeBackPanel = true;
-let wardrobeDimensions = { width: 0.6, height: 0.9, depth: 0.510 };
-
-let legsEnabled = false;
-let selectedLegHeight = 0.1; // 100 mm
-
-const PANEL_THICKNESS = 0.018;
-let firstElementDepth = null;
-
-let wallHeight = 2100;      // domyślnie 2100 mm
-let wallOffset = 50;         // domyślnie 50 mm
-let defaultGap = 450;       // domyślnie 450 mm (przerwa między szafkami)
-const MIN_GAP = 350;
-const MAX_WALL_HEIGHT = 2500;
-
-const addedElements = {}; //Lista obiektów sceny
 
 
 // ==================================
@@ -425,6 +467,26 @@ function createWardrobe(dimensions, includeBackPanel = true, wardrobeType = null
   backPanel.position.set(0, panelHeight / 2, -dimensions.depth / 2 + PANEL_THICKNESS / 2);
   panelsGroup.add(backPanel);
   return panelsGroup;
+}
+
+
+//===============================================
+// Funkcja tworząca pustą przestrzeń
+//===============================================
+
+function createEmptySpace(dimensions) {
+  const geometry = new THREE.PlaneGeometry(dimensions.width, dimensions.height);
+  geometry.translate(0, dimensions.height / 2, 0);
+  const emptySpaceGroup = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x808080,  
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide
+  });
+  const emptySpace = new THREE.Mesh(geometry, material);
+  emptySpaceGroup.add(emptySpace);
+  return emptySpaceGroup;
 }
 
 
@@ -529,6 +591,7 @@ window.addEventListener('resize', () => {
 // =====================================
 
 function openModal() {
+  console.log("specspe.last_el_x_end  "+specificSphere.lastElement_x_end);
   adjustModalOptions();
   const modalContainer = document.getElementById("modal-container");
   const modalStep1 = document.getElementById("modal-step-1");
@@ -571,6 +634,7 @@ document.getElementById("openModalBtn").addEventListener("click", function() {
   modalStep2.classList.add("hidden");
 });
 
+let actualModalType;
 document.getElementById("modalCloseBtn").addEventListener("click", function() {
   modalContainer.classList.add("hidden");
   cancelAnimationFrame(modalAnimationId);
@@ -579,7 +643,6 @@ document.getElementById("modalCloseBtn").addEventListener("click", function() {
 
   let defaultMax = 1200;
   let x_start, x_end;
-  let actualModalType;
   // WYBÓR TYPU SZAFKI (KROK 1)
   document.querySelectorAll(".type-btn").forEach(btn => {
 
@@ -587,8 +650,42 @@ document.getElementById("modalCloseBtn").addEventListener("click", function() {
       modalType = this.getAttribute("data-type");
       const legsToggle = document.getElementById("modalLegsToggle");
       const legsToggleContainer = document.querySelector(".modalLegsToggle");
-      legsToggle.checked = false;
+      const depthInput = document.querySelector("#modalDepth");
+      const cabinetList = document.querySelector(".cabinet-type-list")
+      const previewContainer = document.querySelector("#modal-preview-container"); 
+      const materialList = document.querySelector(".material-list");
 
+      legsToggle.checked = false;
+      if (modalType ==="przerwa"){
+        actualModalType = "wysoka";
+      
+        legsToggleContainer.classList.add("hidden");    
+        depthInput.classList.add("hidden"); 
+        cabinetList.classList.add("hidden");
+        previewContainer.classList.add("hidden");
+        materialList.classList.add("hidden");
+
+        let modalWidthValue = 700;
+        let modalHeightValue = 2000;
+
+        let maxWidthValue = UpdateCabinetMaxWidth(actualModalType, modalHeightValue);
+        modalWidthValue > maxWidthValue ? modalWidthValue = maxWidthValue : modalWidthValue;
+        let maxHeightValue = UpdateCabinetMaxHeight(actualModalType, modalWidthValue);
+        modalHeightValue > maxHeightValue ? modalHeightValue = maxHeightValue : modalHeightValue;
+
+        document.querySelector("#modalWidth").value = modalWidthValue;
+        document.querySelector("#modalWidthValue").textContent = modalWidthValue + "mm";
+        document.querySelector("#modalHeight").value = modalHeightValue;
+        document.querySelector("#modalHeightValue").textContent = modalHeightValue + "mm";
+
+      }else{
+        depthInput.classList.remove("hidden");
+        cabinetList.classList.remove("hidden");
+        previewContainer.classList.remove("hidden");
+        materialList.classList.remove("hidden");
+      
+      
+      
       document.querySelector("#modalWidth").min = 250;
       document.querySelector("#modalHeight").min = 250;
       
@@ -649,7 +746,7 @@ document.getElementById("modalCloseBtn").addEventListener("click", function() {
         legsToggle.checked = true;
 
         let modalWidthValue = 600;
-        let modalHeightValue = 1600;
+        let modalHeightValue = 1300;
 
         let maxWidthValue = UpdateCabinetMaxWidth(actualModalType, modalHeightValue);
 
@@ -668,13 +765,14 @@ document.getElementById("modalCloseBtn").addEventListener("click", function() {
         document.querySelector("#modalDepth").value = 510;
         document.querySelector("#modalDepthValue").textContent = "510 mm";
 
-      }
+      } 
+    }
       modalStep1.classList.add("hidden");
       modalStep2.classList.remove("hidden"); 
       initModalPreview();
       updateModalPreview();
       animateModalPreview();
-    });
+  });
   });
 
 // Obsługa wyboru rodzaju szafki – miniaturki (krok 2, lewa kolumna)
@@ -758,21 +856,22 @@ function updateModalPreview() {
 
   if (modalPreviewWardrobe) {
     modalPreviewScene.remove(modalPreviewWardrobe);
+    modalPreviewScene.remove(wardrobeFinal);
   }
   modalPreviewWardrobe = createWardrobe(wardrobeDimensions, currentIncludeBackPanel, currentWardrobeType);
-  let wardrobeFinal = addLegs(modalPreviewWardrobe, wardrobeDimensions);
+  wardrobeFinal = addLegs(modalPreviewWardrobe, wardrobeDimensions);
   modalPreviewScene.add(wardrobeFinal);
 }
 
 document.getElementById("modalWidth").addEventListener("input", function() {
   document.querySelector("#modalWidthValue").textContent = this.value + " mm";
-  let modalWidthValue = this.value;
-  let maxheg = UpdateCabinetMaxHeight(actualModalType, modalWidthValue);
+  let modalWidthValue = Number(this.value);
+  UpdateCabinetMaxHeight(actualModalType, modalWidthValue);
   updateModalPreview();
 });
 document.getElementById("modalHeight").addEventListener("input", function() {
   document.getElementById("modalHeightValue").textContent = this.value + " mm";
-  let modalHeightValue = this.value;
+  let modalHeightValue = Number(this.value);
   UpdateCabinetMaxWidth(actualModalType, modalHeightValue);
   updateModalPreview();
 });
@@ -820,12 +919,24 @@ function getCabinetMaxDepth() {
 }
 
 
+//=============================
+// Wyrównanie wysokości przerw
+//=============================
+function PrzerwaWyrownanie(){
+  const cabinets = getAllCabinets("przerwa");
+  cabinets.forEach(el => {
+    el.position.y = el.userData.dimensions.height/2;
+  });
+}
+
+
 //================================================================================
 // Wyrównanie szafek od tyłu – wzgledem największej głębokości i offsetu od ściany
 //================================================================================
 
 function updateCabinetsZAlignment() {
-  const cabinetMaxDepth = getCabinetMaxDepth();
+  const f =  getFirstCabinet();
+  const cabinetMaxDepth = f.userData.dimensions.depth;
   getAllCabinets("dolna").forEach(el => {
     el.position.z = parseFloat((-cabinetMaxDepth/2 + (el.userData.dimensions.depth)/2 + wallOffset/1000).toFixed(4));
   });
@@ -834,6 +945,9 @@ function updateCabinetsZAlignment() {
   });
   getAllCabinets("wiszaca").forEach(el => {
     el.position.z =  parseFloat((-cabinetMaxDepth/2 + (el.userData.dimensions.depth)/2).toFixed(4));
+  });
+  getAllCabinets("przerwa").forEach(el => {
+    el.position.z =  parseFloat((-cabinetMaxDepth/2 + wallOffset/1000).toFixed(4));
   });
 }
   
@@ -846,11 +960,17 @@ function getFirstCabinet() {
   for (const key in addedElements) {
     const el = addedElements[key];
     if (first === null || el.position.x < first.position.x) {
+      
       first = el;
+    }else if (el.position.x === first.position.x) {
+      if (el.userData.id < first.userData.id) {
+        first = el;
+      }
     }
   }
   return first;
 }
+
 
 
 //=====================================================
@@ -935,7 +1055,7 @@ function getLatestCabinets() {
   let lastLower = null;
   for (const key in addedElements) {
     const el = addedElements[key];
-    if (el.userData.elementType === "dolna" || el.userData.elementType === "wysoka") {
+    if (el.userData.elementType === "dolna" || el.userData.elementType === "wysoka" || el.userData.elementType === "przerwa") {
       if (!lastLower || el.position.x > lastLower.position.x) {
         lastLower = el;
       }
@@ -954,7 +1074,6 @@ function GetALLCabinetsInElWidth(xStart, xEnd) {
     const cabinetsInElWidth = [];
     for (const key in addedElements) {
       const el = addedElements[key];
-      //console.log("pozycja sprawdzanego elementu w X : x, width/2, szafka docelowa: xstart, xend " + el.position.x*1000, el.userData.dimensions.width/2*1000, xStart, xEnd);
       if (((el.position.x - el.userData.dimensions.width/2)*1000 >= (xStart+eps) && (el.position.x-el.userData.dimensions.width/2)*1000<= (xEnd-eps)) || 
       ((el.position.x + el.userData.dimensions.width/2)*1000 >= (xStart+eps) && (el.position.x + el.userData.dimensions.width/2)*1000 <= (xEnd-eps)) ||
       ((el.position.x - el.userData.dimensions.width/2)*1000 <= (xStart+eps) && (el.position.x + el.userData.dimensions.width/2)*1000 >= (xEnd-eps))) {
@@ -1005,35 +1124,28 @@ function getCabinetsInElHeight(yStart, yEnd, cabinetsInElWidth=[]) {
 }
 
 
-//=========================================================
-// Update max wysokości szafki, dla szafek w przedziale X-X
-//=========================================================
-// function updateCabinetMaxHeight(cabinetType, x_start, x_end){
-//   cabinetType ==="wysoka" ? defaultMax = document.getElementById("wallHeight").value : defaultMax = 1200;
-//   const cabinetsInElWidth = GetALLCabinetsInElWidth(x_start, x_end);
-//   const maxExistingCabinetEl = cabinetsInElWidth.length > 0 ? 
-//       cabinetsInElWidth.reduce((maxEl, el) =>
-//           el.userData.dimensions.height > maxEl.userData.dimensions.height ? el : maxEl
-//       ) : undefined;
-//     if (maxExistingCabinetEl) {
-//       const maxExistingCabinetHeight = Math.round(maxExistingCabinetEl.userData.dimensions.height * 1000);
-//       if(maxExistingCabinetEl.userData.elementType === "wysoka"){
-//         const maxHeight = (wallHeight - maxExistingCabinetHeight) > defaultMax ? defaultMax : wallHeight - maxExistingCabinetHeight;
-//         document.getElementById("modalHeight").max = maxHeight.toString();
-//         return maxHeight;
-//       }else{
-//           const maxHeight = (wallHeight - (maxExistingCabinetHeight + MIN_GAP) > defaultMax) 
-//             ? defaultMax 
-//             : wallHeight - (maxExistingCabinetHeight + MIN_GAP);
-//           document.getElementById("modalHeight").max = maxHeight.toString();
-//           return maxHeight;
-//         }
-//     } else {
-//         document.getElementById("modalHeight").max = defaultMax.toString();
-//         return defaultMax;
-//       }
-// }
+function AddWallsFloor()
+{
 
+
+floor.position.x = 5;
+floor.position.y = 0;
+floor.position.z = 5;
+floor.rotation.x = Math.PI / 2; 
+scene.add(floor);
+
+wall1.position.y = 1.5; 
+wall1.position.z = -0.001; 
+wall1.position.x = 4.99;
+scene.add(wall1);
+
+
+wall2.position.y = 1.5; 
+wall2.position.x = -0.001; 
+wall2.position.z = 5;
+wall2.rotation.y = Math.PI / 2;
+scene.add(wall2);
+}
 
 //======================================
 // aktualizacja max szerokosci
@@ -1045,10 +1157,16 @@ function UpdateCabinetMaxWidth(modalType, height){
     defaultMax = 1200;
     if(modalType === "wiszaca")
     {
-      let allCabinetsinHeight = GetALLCabinetsInElHeight(wallHeight-height-minimalGap, wallHeight);
+      let allCabinetsinHeightdown = GetALLCabinetsInElHeight(wallHeight-height-minimalGap, wallHeight);
+      let allCabinetsinHeightall = GetALLCabinetsInElHeight(wallHeight-height, wallHeight);  
+      allCabinetsinHeightall = allCabinetsinHeightall.filter(el =>   
+        el.userData.elementType === "wysoka" || el.userData.elementType === "przerwa" || el.userData.elementType === "wiszaca");
+      allCabinetsinHeightdown = allCabinetsinHeightdown.filter(el =>
+        el.userData.elementType === "dolna");
+      let allCabinetsinHeight = allCabinetsinHeightall.concat(allCabinetsinHeightdown);
       allCabinetsinHeight = allCabinetsinHeight.filter(el => 
         el.position.x + el.userData.dimensions.width / 2 > lastEL_x_end
-      );      
+      ); 
       if(allCabinetsinHeight.length === 0){
         document.querySelector("#modalWidth").max = defaultMax;
         return defaultMax;
@@ -1077,18 +1195,22 @@ function UpdateCabinetMaxWidth(modalType, height){
         return maxWidth;
       }
     }else if(modalType==="wysoka"){
+      
       let allCabinetsinHeight = GetALLCabinetsInElHeight(0, height);
       allCabinetsinHeight = allCabinetsinHeight.filter(el => 
         el.position.x + el.userData.dimensions.width / 2 > lastEL_x_end
       );
+     
       if(allCabinetsinHeight.length === 0){
         document.querySelector("#modalWidth").max = defaultMax;
         return defaultMax;
       }else {
         let minElX = allCabinetsinHeight.reduce((minElX, el) =>
           el.position.x-(el.userData.dimensions.width/2) < minElX.position.x-(minElX.userData.dimensions.width/2) ? el : minElX);
+     
         let maxWidth = (minElX.position.x -(minElX.userData.dimensions.width/2) - lastEL_x_end)*1000;
         maxWidth>defaultMax?maxWidth = defaultMax : maxWidth;
+    
         document.querySelector("#modalWidth").max = maxWidth;
         return maxWidth;
       }
@@ -1110,23 +1232,43 @@ function UpdateCabinetMaxHeight(modalType, width){
           document.querySelector("#modalHeight").max = defaultMax;
           return defaultMax;
         }else{
-          let maxWysokaCab = cabinetsInWidth.reduce((maxH, el) =>
-            el.userData.elementType === "wysoka" ? el.userData.dimensions.height > maxH.userData.dimensions.height ? el : maxH : maxH);
-          let maxDolnaCab = cabinetsInWidth.reduce((maxH, el) =>
-            el.userData.elementType === "dolna" ? el.userData.dimensions.height > maxH.userData.dimensions.height ? el : maxH : maxH);
-          let maxHeight = maxWysokaCab.userData.dimensions.height*1000> maxDolnaCab.userData.dimensions.height*1000+minimalGap ? wallHeight-(maxWysokaCab.userData.dimensions.height*1000) : wallHeight-(maxDolnaCab.userData.dimensions.height*1000)-minimalGap;
+          let wysokaOrPrzerwa = cabinetsInWidth.filter(el =>
+            el.userData.elementType === "wysoka" || el.userData.elementType === "przerwa"
+          );
+          let maxWysokaCab = wysokaOrPrzerwa.length>0 ? wysokaOrPrzerwa.reduce((maxH, el) =>
+            el.userData.dimensions.height > maxH.userData.dimensions.height ? el : maxH
+          ) : null;
+
+          let dolna = cabinetsInWidth.filter(el =>
+            el.userData.elementType === "dolna"
+          );
+          let maxDolnaCab = dolna.length>0 ? dolna.reduce((maxHe, ele) =>
+            ele.userData.dimensions.height > maxHe.userData.dimensions.height ? ele : maxHe
+          ) : null;
+          let maxHeight;
+          if(!maxWysokaCab && !maxDolnaCab){
+            return defaultMax;
+          }else if(!maxWysokaCab && maxDolnaCab){
+            maxHeight = wallHeight - (maxDolnaCab.userData.dimensions.height*1000) - minimalGap;
+            document.querySelector("#modalHeight").max = maxHeight;
+            return maxHeight;
+          }else if(maxWysokaCab && !maxDolnaCab){
+            maxHeight = wallHeight - (maxWysokaCab.userData.dimensions.height*1000);
+            document.querySelector("#modalHeight").max = maxHeight;
+            return maxHeight;
+          }else if(maxWysokaCab && maxDolnaCab){
+          maxHeight = maxWysokaCab.userData.dimensions.height*1000 > maxDolnaCab.userData.dimensions.height*1000+minimalGap ? wallHeight-(maxWysokaCab.userData.dimensions.height*1000) : wallHeight-(maxDolnaCab.userData.dimensions.height*1000)-minimalGap;
           document.querySelector("#modalHeight").max = maxHeight;  
           return maxHeight;
-        }}else if(modalType === "dolna"){
+        }
+      }}else if(modalType === "dolna"){
           let cabinetsInWidth = GetALLCabinetsInElWidth(lastEL_x_end*1000, lastEL_x_end*1000 + width);
           if(cabinetsInWidth.length === 0){
             document.querySelector("#modalHeight").max = defaultMax;
             return defaultMax;
           }else{
-            // console.log(cabinetsInWidth);
           let maxWiszacaCab = cabinetsInWidth.reduce((maxH, el) =>
             el.userData.elementType === "wiszaca" ? el.userData.dimensions.height > maxH.userData.dimensions.height ? el : maxH : maxH);
-          // console.log(maxWiszacaCab.userData.dimensions.height*1000);
           let maxHeigh = wallHeight - maxWiszacaCab.userData.dimensions.height*1000 - minimalGap;
           document.querySelector("#modalHeight").max = maxHeigh;
           return maxHeigh;
@@ -1184,8 +1326,15 @@ function addElementToList(id) {
 
 let elementCounter = 1;
 document.getElementById("modalAddElementBtn").addEventListener("click", function() {
-  const newWardrobe = createWardrobe(wardrobeDimensions, currentIncludeBackPanel, currentWardrobeType);
-  newWardrobe.rotation.y = 0;
+  let newWardrobe;
+  if (modalType != "przerwa") {
+    const nWardrobe = createWardrobe(wardrobeDimensions, currentIncludeBackPanel, currentWardrobeType);
+    newWardrobe = addLegs(nWardrobe, wardrobeDimensions);
+    newWardrobe.rotation.y = 0;
+  } else {
+    newWardrobe = createEmptySpace(wardrobeDimensions);
+    newWardrobe.rotation.y = 0;
+  }
 
   const legsActive = document.getElementById("modalLegsToggle").checked;
 
@@ -1193,8 +1342,8 @@ document.getElementById("modalAddElementBtn").addEventListener("click", function
   newWardrobe.userData = {
     id: elementCounter,
     elementType: modalType,
-    name: modalCabinetName || (modalCabinetType ? modalCabinetType : (typeMapping[modalType] || "korpus_uni")),
-    idname: modalCabinetType || (typeMapping[modalType] || "korpus_uni"),
+    name: modalCabinetName || (modalCabinetType ? modalCabinetType : (typeMapping[modalType])),
+    idname: modalCabinetType || (typeMapping[modalType]),
     dimensions: Object.assign({}, wardrobeDimensions),
     legsEnabled: legsActive,
     hide_nogi: legsActive ? 0 : 1,
@@ -1209,10 +1358,20 @@ document.getElementById("modalAddElementBtn").addEventListener("click", function
   let newX = 0;
   const cabinetWidth = wardrobeDimensions.width;
   const cabinetHeight = wardrobeDimensions.height;
-  console.log(specificSphere.lastElement_x_end);
   const lastCabinet_x_end = specificSphere.lastElement_x_end;
   if(lastCabinet_x_end){
+    const cab_w = GetALLCabinetsInElWidth(lastCabinet_x_end*1000, lastCabinet_x_end*1000 + cabinetWidth*1000);
+    const cab_h = newWardrobe.userData.elementType==="wiszaca"? getCabinetsInElHeight(wallHeight-cabinetHeight*1000, wallHeight, cab_w) :
+    getCabinetsInElHeight(0, cabinetHeight*1000, cab_w);
+    if(cab_h.length > 0){
+      const lastCabinet = cab_h.reduce((maxEl, el) =>
+        (el.position.x + el.userData.dimensions.width / 2) > (maxEl.position.x + maxEl.userData.dimensions.width / 2) ? el : maxEl);
+   
+        newX = lastCabinet.position.x + (lastCabinet.userData.dimensions.width / 2) + (cabinetWidth / 2);
+      
+      }else{
       newX = lastCabinet_x_end + (cabinetWidth / 2);
+      }
     } else { 
       const firstCabinet = getFirstCabinet(); 
       if (firstCabinet) {
@@ -1238,18 +1397,35 @@ document.getElementById("modalAddElementBtn").addEventListener("click", function
   addedElements[elementCounter] = newWardrobe;
   addElementToList(elementCounter++);
 
-  // Po dodaniu szafki, wyrównujemy wszystkie szafki od tyłu
   updateCabinetsZAlignment();
+  //PrzerwaWyrownanie();
 
   cancelAnimationFrame(modalAnimationId);
   document.getElementById("modal-preview-container").innerHTML = "";
   modalContainer.classList.add("hidden");
+  addNewCabinetPluses();
+  UpdateWallPos();
   modalType = null;
   modalCabinetType = null;
   modalMaterial = null;
   legsGroup=null;
-  addNewCabinetPluses();
 });
+
+
+function UpdateWallPos()
+{
+  if(!updatewall){
+  let f = getFirstCabinet();
+  let z_pos = f.userData.elementType!="wiszaca" ? f.position.z - f.userData.dimensions.depth/2 - wallOffset/1000 : f.position.z - f.userData.dimensions.depth/2;
+  wall1.position.z = z_pos;
+  wall2.position.z = wall2.position.z + z_pos;
+  floor.position.z = floor.position.z + z_pos;
+  updatewall = true;
+}
+}
+
+
+
 
 // =======================
 // FUNKCJE I OBSŁUGA MENU EDYCJI ŚCIANY MEBLI
@@ -1292,7 +1468,6 @@ document.getElementById("modalAddElementBtn").addEventListener("click", function
   const wallSlider = document.getElementById("wallHeight");
   wallSlider.min = minWallHeight;
   wallSlider.max = MAX_WALL_HEIGHT;
-  wallHeightContainer
   // Ustaw domyślną wartość ściany na 2100 mm, chyba że minimalna wartość jest większa
   wallSlider.value = Math.max(2100, minWallHeight);
   

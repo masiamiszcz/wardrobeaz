@@ -50,6 +50,7 @@
             <button class="btn btn-secondary type-btn btn-wiszaca" data-type="wiszaca">Szafka wisząca</button>
             <button class="btn btn-secondary type-btn btn-wysoka" data-type="wysoka">Szafka wysoka</button>
             <button class="btn btn-secondary type-btn btn-dolna" data-type="dolna">Szafka dolna</button>
+            <button class="btn btn-secondary type-btn btn-przerwa" data-type="przerwa">Wstaw pustą przestrzeń</button>
           </div>
         </div>
         <!-- Krok 2: Formularz konfiguracji – trzy kolumny -->
@@ -58,11 +59,11 @@
             <!-- Kolumna lewa: Lista rodzajów szafek -->
             <div class="cabinet-type-list">
               <h3>Rodzaje szafek</h3>
+              {% for model in cabinet_models %}
               <div class="cabinet-options">
-                {% for model in cabinet_models %}
-                <img class="cabinet-thumb" data-type="{{ model.name }}" src="{{ model.img_path }}" alt="{{ model.name }}" title="{{ model.name }}">
-                {% endfor %}
+                  <img class="cabinet-thumb" data-type="{{ model.name }}" src="{{ model.img_path }}" alt="{{ model.name }}" title="{{ model.name }}">
               </div>
+              {% endfor %}
             </div>
             <!-- Kolumna środkowa: Podgląd i kontrolki -->
             <div class="preview-container">
@@ -115,12 +116,11 @@
             <!-- Kolumna prawa: Lista materiałów -->
             <div class="material-list">
               <h3>Materiały</h3>
+              {% for mat in materials %}
               <div class="material-options">
-                {% for mat in materials %}
                   <img class="material-thumb" data-material="{{ mat.code }}" src="{{ mat.img_path }}" alt="{{ mat.code }}" title="{{ mat.code }}">
-                {% endfor %}
-
               </div>
+              {% endfor %}
             </div>
           </div>
         </div>
